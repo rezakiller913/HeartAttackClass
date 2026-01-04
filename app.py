@@ -39,7 +39,7 @@ h1, h2, h3 { color: #0b3c5d; }
 # =========================
 st.markdown("## 🫀 Cardiac Risk Assessment System")
 st.markdown(
-    "Clinical Decision Support System with **medical guidance for each input**"
+    "Clinical Decision Support System using **Explainable Rule-Based Knowledge**"
 )
 
 # =========================
@@ -51,95 +51,80 @@ with st.form("patient_form"):
     col1, col2 = st.columns(2)
     with col1:
         age = st.number_input(
-            "Age (years)",
-            1, 120, 50,
-            help="Usia pasien dalam tahun. Risiko penyakit jantung meningkat seiring bertambahnya usia."
+            "Age (years)", 1, 120, 50,
+            help="Risk increases with age."
         )
     with col2:
         gender = st.selectbox(
-            "Gender",
-            ["Female", "Male"],
-            help="Jenis kelamin biologis pasien. Pria cenderung berisiko lebih tinggi di usia lebih muda."
+            "Gender", ["Female", "Male"],
+            help="Male patients generally have higher risk at younger age."
         )
 
     st.markdown("### ❤️ Cardiovascular Symptoms")
     col1, col2 = st.columns(2)
     with col1:
         chestpain = st.selectbox(
-            "Chest Pain Type (0–3)",
+            "Chest Pain Type",
             [0, 1, 2, 3],
-            help=(
-                "0: Typical angina (nyeri dada khas jantung)\n"
-                "1: Atypical angina\n"
-                "2: Non-anginal pain\n"
-                "3: Asymptomatic (tidak ada nyeri)"
-            )
+            help="Higher value indicates more severe angina."
         )
         exerciseangina = st.selectbox(
             "Exercise-induced Angina",
             [0, 1],
-            help="Nyeri dada yang muncul saat aktivitas fisik (0 = Tidak, 1 = Ya)."
+            help="Chest pain triggered by physical activity."
         )
     with col2:
         oldpeak = st.slider(
-            "ST Depression (Oldpeak)",
-            0.0, 6.0, 1.0,
-            help="Derajat depresi segmen ST pada EKG saat stres. Nilai > 2 menunjukkan risiko tinggi."
+            "ST Depression (Oldpeak)", 0.0, 6.0, 1.0,
+            help="ST depression > 2 indicates high ischemic risk."
         )
         slope = st.selectbox(
             "ST Segment Slope",
             [0, 1, 2],
-            help="Kemiringan segmen ST saat latihan. Flat atau menurun lebih berisiko."
+            help="Abnormal slope associated with heart disease."
         )
 
     st.markdown("### 🧪 Clinical Measurements")
     col1, col2 = st.columns(2)
     with col1:
         restingBP = st.slider(
-            "Resting Blood Pressure (mmHg)",
-            50, 250, 120,
-            help="Tekanan darah saat istirahat. Nilai ≥140 mmHg termasuk hipertensi."
+            "Resting Blood Pressure (mmHg)", 50, 250, 120,
+            help="≥140 mmHg is considered hypertension."
         )
         serumcholesterol = st.slider(
-            "Serum Cholesterol (mg/dL)",
-            50, 600, 200,
-            help="Kolesterol total darah. ≥240 mg/dL tergolong tinggi."
+            "Serum Cholesterol (mg/dL)", 50, 600, 200,
+            help="≥240 mg/dL is considered high cholesterol."
         )
     with col2:
         fastingbloodsugar = st.selectbox(
             "Fasting Blood Sugar > 120 mg/dL",
             [0, 1],
-            help="Menunjukkan apakah gula darah puasa pasien >120 mg/dL (indikasi diabetes)."
+            help="Indicator of diabetes."
         )
         restingelectro = st.selectbox(
-            "Resting ECG Result",
+            "Resting ECG",
             [0, 1, 2],
-            help=(
-                "0: Normal\n"
-                "1: ST-T abnormality\n"
-                "2: Left ventricular hypertrophy"
-            )
+            help="Abnormal ECG patterns indicate cardiac issues."
         )
 
     st.markdown("### 🫀 Cardiac Capacity")
     col1, col2 = st.columns(2)
     with col1:
         maxheartrate = st.slider(
-            "Maximum Heart Rate",
-            50, 250, 150,
-            help="Detak jantung maksimum saat aktivitas. Nilai rendah untuk usia dapat menandakan gangguan."
+            "Maximum Heart Rate", 50, 250, 150,
+            help="Low max heart rate relative to age increases risk."
         )
     with col2:
         noofmajorvessels = st.selectbox(
             "Number of Major Vessels",
             [0, 1, 2, 3],
-            help="Jumlah pembuluh darah besar yang tersumbat (hasil angiografi)."
+            help="Number of blocked vessels from angiography."
         )
 
     submit = st.form_submit_button("🔍 Analyze Cardiac Risk")
 
 # =========================
-# RULE ENGINE
+# KNOWLEDGE BASE (RULE ENGINE)
 # =========================
 def evaluate_rules():
     votes = []
@@ -155,16 +140,24 @@ def evaluate_rules():
 
     if maxheartrate < 130 and oldpeak > 1:
         votes.append(1)
-        rules.append("Low maximum heart rate + ST abnormality")
+        rules.append("Low max heart rate + ST abnormality")
+
+    if slope >= 1 and restingelectro >= 1:
+        votes.append(1)
+        rules.append("Abnormal ST slope + abnormal ECG")
+
+    if age > 55 and restingBP > 150:
+        votes.append(1)
+        rules.append("Advanced age + hypertension")
 
     return votes, rules
 
 
 def determine_risk(votes):
     score = sum(votes)
-    if score >= 2:
+    if score >= 3:
         return "HIGH"
-    elif score == 1:
+    elif score == 2:
         return "MODERATE"
     else:
         return "LOW"
@@ -180,7 +173,7 @@ if submit:
 
     if risk == "HIGH":
         st.error("🔴 HIGH CARDIAC RISK")
-        st.markdown("**Recommendation:** Immediate referral to cardiologist.")
+        st.markdown("**Recommendation:** Immediate cardiology referral.")
     elif risk == "MODERATE":
         st.warning("🟠 MODERATE CARDIAC RISK")
         st.markdown("**Recommendation:** Further diagnostic evaluation advised.")
@@ -188,5 +181,9 @@ if submit:
         st.success("🟢 LOW CARDIAC RISK")
         st.markdown("**Recommendation:** Maintain healthy lifestyle and routine check-ups.")
 
-    
-
+    st.markdown("### 📌 Activated Clinical Rules")
+    if active_rules:
+        for r in active_rules:
+            st.markdown(f"- {r}")
+    else:
+        st.markdown("- No high-risk rules activated")
